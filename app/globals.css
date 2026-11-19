@@ -166,10 +166,10 @@ html[data-lang='mne'] [data-lang-to='mne'] { color: var(--white); background: rg
 .final p { color: var(--on-navy); }
 .final .btn { margin-top: 18px; max-width: 420px; }
 
-/* Form: space reserved so nothing jumps when Typeform loads. */
-.book { height: 640px; max-width: 760px; margin: 0 auto; scroll-margin-top: 64px; }
-.typeform-box, .typeform-box .typeform, .typeform-box .typeform > div { height: 100%; }
-.form-placeholder { height: 100%; background: var(--band); }
+/* Form: space reserved so nothing jumps when Tally loads; Tally then sizes the iframe to the form. */
+.book { min-height: 600px; max-width: 680px; margin: 0 auto; padding: 32px var(--gutter) 8px; scroll-margin-top: 64px; }
+.tally { display: block; width: 100%; min-height: 560px; border: 0; }
+.form-placeholder { height: 560px; border-radius: 12px; background: var(--band); }
 .form-missing { margin: 24px var(--gutter); padding: 20px; border: 2px dashed var(--cta); border-radius: 12px; font-size: 0.875rem; }
 
 /* Footer */
@@ -220,5 +220,4 @@ html[data-lang='mne'] [data-lang-to='mne'] { color: var(--white); background: rg
   .places { grid-template-columns: repeat(5, 1fr); }
   .sticky { display: none; }
   .consent { left: auto; right: 24px; bottom: 24px; max-width: 400px; }
-  .book { height: 620px; }
 }

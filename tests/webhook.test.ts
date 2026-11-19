@@ -1,29 +1,46 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { verifySignature, parseSubmission, splitName } from '../lib/server/typeform.ts';
+import { verifySignature, parseSubmission, splitName, isoDate } from '../lib/server/tally.ts';
 import { contactAttributes, e164 } from '../lib/server/brevo.ts';
 import { buildLeadEvent } from '../lib/server/meta.ts';
 
+const hidden = (label: string, value: string) => ({ key: `question_h_${label}`, label, type: 'HIDDEN_FIELDS', value });
+
+// Shape of a Tally FORM_RESPONSE webhook for the MNE form.
 const payload = {
-  event_type: 'form_response',
-  form_response: {
-    token: 'resp123',
-    submitted_at: '2026-11-20T09:00:00Z',
-    hidden: { lang: 'mne', utm_source: 'facebook', utm_campaign: 'taster', fbclid: 'FB1', gclid: '', fbp: 'fb.1.1.2', fbc: 'fb.1.1.FB1', event_id: 'ev-1', ad_consent: 'granted', user_agent: 'UA' },
-    answers: [
-      { type: 'text', field: { ref: 'parent_name', type: 'short_text' }, text: 'Ana Marija Petrović' },
-      { type: 'email', field: { ref: 'some_email_ref', type: 'email' }, email: 'Ana@Example.com' },
-      { type: 'phone_number', field: { ref: 'phone', type: 'phone_number' }, phone_number: '+382 67 123 456' },
-      { type: 'text', field: { ref: 'child_name', type: 'short_text' }, text: 'Luka' },
-      { type: 'date', field: { ref: 'child_dob', type: 'date' }, date: '2016-03-05' }
+  eventId: 'evt1',
+  eventType: 'FORM_RESPONSE',
+  createdAt: '2026-11-20T09:00:00.000Z',
+  data: {
+    responseId: 'resp123',
+    submissionId: 'resp123',
+    formId: 'db0ePA',
+    formName: 'KSI Taster Morning (MNE)',
+    createdAt: '2026-11-20T09:00:00.000Z',
+    fields: [
+      { key: 'question_a', label: 'Ime i prezime roditelja', type: 'INPUT_TEXT', value: 'Ana Marija Petrović' },
+      { key: 'question_b', label: 'Email', type: 'INPUT_EMAIL', value: 'Ana@Example.com' },
+      { key: 'question_c', label: 'Telefon', type: 'INPUT_PHONE_NUMBER', value: '+38267123456' },
+      { key: 'question_d', label: 'Ime i prezime djeteta', type: 'INPUT_TEXT', value: 'Luka Petrović' },
+      { key: 'question_e', label: 'Datum rođenja djeteta', type: 'INPUT_DATE', value: '2016-03-05' },
+      hidden('lang', 'mne'),
+      hidden('utm_source', 'facebook'),
+      hidden('utm_campaign', 'taster'),
+      hidden('fbclid', 'FB1'),
+      hidden('gclid', ''),
+      hidden('fbp', 'fb.1.1.2'),
+      hidden('fbc', 'fb.1.1.FB1'),
+      hidden('event_id', 'ev-1'),
+      hidden('ad_consent', 'granted'),
+      hidden('user_agent', 'UA')
     ]
   }
 };
 
-test('signature: valid, tampered, missing', () => {
+test('signature: valid, tampered, wrong secret, missing', () => {
   const raw = JSON.stringify(payload);
-  const sig = 'sha256=' + crypto.createHmac('sha256', 'sec').update(raw).digest('base64');
+  const sig = crypto.createHmac('sha256', 'sec').update(raw).digest('base64');
   assert.equal(verifySignature(raw, sig, 'sec'), true);
   assert.equal(verifySignature(raw + ' ', sig, 'sec'), false);
   assert.equal(verifySignature(raw, sig, 'other'), false);
@@ -31,15 +48,36 @@ test('signature: valid, tampered, missing', () => {
   assert.equal(verifySignature(raw, sig, ''), false);
 });
 
-test('parse answers by ref and type', () => {
+test('parse Tally fields by type, label and hidden fields', () => {
   const s = parseSubmission(payload)!;
   assert.equal(s.parentName, 'Ana Marija Petrović');
   assert.equal(s.email, 'ana@example.com');
-  assert.equal(s.phone, '+382 67 123 456');
-  assert.equal(s.childName, 'Luka');
+  assert.equal(s.phone, '+38267123456');
+  assert.equal(s.childName, 'Luka Petrović');
   assert.equal(s.childDob, '2016-03-05');
   assert.equal(s.hidden.event_id, 'ev-1');
+  assert.equal(s.hidden.lang, 'mne');
   assert.deepEqual(splitName(s.parentName), { first: 'Ana Marija', last: 'Petrović' });
+});
+
+test('EN labels and order fallback for names', () => {
+  const en = structuredClone(payload);
+  en.data.fields[0].label = "Parent's first and last name";
+  en.data.fields[3].label = "Child's first and last name";
+  assert.equal(parseSubmission(en)!.childName, 'Luka Petrović');
+  const odd = structuredClone(payload);
+  odd.data.fields[0].label = 'Name';
+  odd.data.fields[3].label = 'Other name';
+  const s = parseSubmission(odd)!;
+  assert.equal(s.parentName, 'Ana Marija Petrović');
+  assert.equal(s.childName, 'Luka Petrović');
+});
+
+test('date formats', () => {
+  assert.equal(isoDate('2016-03-05'), '2016-03-05');
+  assert.equal(isoDate('5.3.2016'), '2016-03-05');
+  assert.equal(isoDate('05/03/2016'), '2016-03-05');
+  assert.equal(isoDate('nonsense'), '');
 });
 
 test('brevo attributes', () => {
@@ -47,7 +85,7 @@ test('brevo attributes', () => {
   assert.equal(a.SMS, '+38267123456');
   assert.equal(a.LANGUAGE, 'MNE');
   assert.equal(a.CHILD_DOB, '2016-03-05');
-  assert.equal(a.STUDENT_NAME, 'Luka');
+  assert.equal(a.STUDENT_NAME, 'Luka Petrović');
   assert.equal(a.UTM_SOURCE, 'facebook');
   assert.equal('GCLID' in a, false, 'empty values are left out');
   assert.equal(e164('067 123 456'), '+38267123456');

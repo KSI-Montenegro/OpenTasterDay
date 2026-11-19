@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server';
-import { languageOf, parseSubmission, verifySignature } from '@/lib/server/typeform';
+import { languageOf, parseSubmission, verifySignature } from '@/lib/server/tally';
 import { sendConfirmation, upsertContact } from '@/lib/server/brevo';
 import { buildLeadEvent, sendLead } from '@/lib/server/meta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Typeform calls this when a parent submits the booking form.
-// 1. Verify the Typeform signature.
+// Tally calls this when a parent submits the booking form.
+// 1. Verify the Tally signature.
 // 2. Create or update the Brevo contact and add it to the event list.
 // 3. Send the confirmation email from the template for the visitor's language.
 // 4. Send the Meta Conversions API Lead (same event_id as the browser Pixel event).
 export async function POST(req: Request) {
   const raw = await req.text();
-  const secret = process.env.TYPEFORM_WEBHOOK_SECRET || '';
-  if (!verifySignature(raw, req.headers.get('typeform-signature'), secret)) {
+  const secret = process.env.TALLY_SIGNING_SECRET || '';
+  if (!verifySignature(raw, req.headers.get('tally-signature'), secret)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
@@ -24,6 +24,9 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
+  if ((payload as { eventType?: string }).eventType !== 'FORM_RESPONSE') {
+    return NextResponse.json({ ok: true, ignored: true });
+  }
   const s = parseSubmission(payload);
   if (!s || !s.email) {
     console.error('Taster webhook: no email in submission');
@@ -32,7 +35,7 @@ export async function POST(req: Request) {
   const lang = languageOf(s);
   const result: Record<string, unknown> = { lang };
 
-  // Brevo contact + list. A failure here returns 500 so Typeform retries the webhook.
+  // Brevo contact + list. A failure here returns 500 so Tally retries the webhook.
   const brevoKey = process.env.BREVO_API_KEY || '';
   const listId = parseInt(process.env.BREVO_LIST_ID || '', 10);
   if (brevoKey && listId) {
@@ -79,5 +82,5 @@ export async function POST(req: Request) {
 }
 
 export function GET() {
-  return NextResponse.json({ ok: true, info: 'POST Typeform webhooks here.' });
+  return NextResponse.json({ ok: true, info: 'POST Tally webhooks here.' });
 }

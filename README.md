@@ -3,27 +3,30 @@
 One page, two languages (`#en`, `#mne`), Next.js on Vercel.
 
 - `lib/content.ts`: all page copy (EN and MNE), exactly as supplied.
-- `components/`: page, Typeform embed, cookie consent banner.
+- `app/page.tsx`: the page, server-rendered with both languages; CSS shows the one in the hash.
+- `components/`: client island (language switch, buttons, sticky bar), Tally form embed, cookie consent banner.
 - `app/layout.tsx`: Google Consent Mode v2 defaults, GA4 and Google Ads tag, Meta Pixel (loaded only after consent).
-- `app/api/typeform-webhook/route.ts`: Typeform webhook. Verifies the signature, creates or updates the Brevo contact, adds it to the list, sends the confirmation email, sends the Meta Conversions API Lead.
+- `app/api/tally-webhook/route.ts`: Tally webhook. Verifies the signature, creates or updates the Brevo contact, adds it to the list, sends the confirmation email, sends the Meta Conversions API Lead.
 
 No keys or IDs are in the code. All of them are Vercel environment variables; see `.env.example`.
 
-## Typeform form setup
+## Tally forms
 
-Hidden fields (both forms): `lang, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, gclid, fbp, fbc, event_id, ad_consent, user_agent`
+Two forms, "KSI Taster Morning (EN)" and "(MNE)", in the KSI Tally workspace.
 
-Question refs (Question settings > ref):
+Fields (all required): parent's first and last name, email, phone, child's first and last name, child's date of birth.
+The webhook finds email, phone and date by field type, and the two names by their labels
+(parent/roditelj, child/djete), so keep those words in the labels if you edit them.
 
-| Question | ref | Type |
-|---|---|---|
-| Parent name | `parent_name` | Short text |
-| Email | `email` | Email |
-| Phone | `phone` | Phone number |
-| Child name | `child_name` | Short text |
-| Child date of birth | `child_dob` | Date |
+Hidden fields: `lang, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, gclid, fbp, fbc, event_id, ad_consent, user_agent`
 
-Webhook: `https://<your domain>/api/typeform-webhook`, with a secret (same value as `TYPEFORM_WEBHOOK_SECRET`).
+Webhook on each form: `https://<your domain>/api/tally-webhook`, event "Form response", signing secret = `TALLY_SIGNING_SECRET`.
+
+## Brevo
+
+- List: "Taster Morning 11 Dec 2026"
+- Contact attributes: FIRSTNAME, LASTNAME, SMS, WHATSAPP, STUDENT_NAME, CHILD_DOB (date), LANGUAGE, UTM_*, FBCLID, GCLID
+- Templates: "Taster Morning confirmation (EN)" and "(MNE)", params PARENT_NAME, FIRSTNAME, CHILD_NAME, CHILD_DOB
 
 ## Develop
 

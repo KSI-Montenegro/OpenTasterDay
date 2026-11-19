@@ -1,5 +1,5 @@
 // Browser-side tracking: consent, attribution, and the conversion events fired
-// when the Typeform is submitted. IDs come from NEXT_PUBLIC_* env vars.
+// when the Tally form is submitted. IDs come from NEXT_PUBLIC_* env vars.
 
 import type { Lang } from './content';
 

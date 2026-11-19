@@ -10,7 +10,6 @@
     "lint:copy": "node scripts/lint-copy.mjs"
   },
   "dependencies": {
-    "@typeform/embed-react": "4.11.0",
     "next": "15.5.29",
     "react": "19.2.0",
     "react-dom": "19.2.0"

@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { languageOf, splitName, type Submission } from './typeform.ts';
+import { languageOf, splitName, type Submission } from './tally.ts';
 
 const sha = (v: string) => crypto.createHash('sha256').update(v).digest('hex');
 const norm = (v: string) => v.trim().toLowerCase();

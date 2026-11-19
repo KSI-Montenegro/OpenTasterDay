@@ -1,4 +1,4 @@
-import { languageOf, splitName, type Submission } from './typeform.ts';
+import { languageOf, splitName, type Submission } from './tally.ts';
 
 const API = 'https://api.brevo.com/v3';
 

@@ -6,7 +6,7 @@ import { COPY, langFromHash, type Lang } from '@/lib/content';
 import { readConsent, type Consent } from '@/lib/tracking';
 import ConsentBanner from './ConsentBanner';
 
-// Typeform is the heaviest thing on the page, so its code and iframe load only
+// The form (Tally iframe) is the heaviest thing on the page, so it loads only
 // when the visitor nears the form or taps a booking button.
 const BookingForm = dynamic(() => import('./BookingForm'), { ssr: false, loading: () => <div className="form-placeholder" /> });
 
