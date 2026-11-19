@@ -1,0 +1,24 @@
+{
+  "name": "open-taster-day",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "lint:copy": "node scripts/lint-copy.mjs"
+  },
+  "dependencies": {
+    "@typeform/embed-react": "4.11.0",
+    "next": "15.5.29",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}
