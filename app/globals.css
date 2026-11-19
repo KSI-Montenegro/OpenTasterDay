@@ -87,7 +87,7 @@ html[data-lang='mne'] [data-lang-to='mne'] { color: var(--white); background: rg
 /* Hero */
 .hero { background: var(--navy); color: var(--white); }
 .hero-img { position: relative; height: 30vh; min-height: 170px; max-height: 260px; }
-.hero-img img { object-fit: cover; object-position: 50% 30%; }
+.hero-img img { object-fit: cover; }
 .hero-copy { padding: 22px var(--gutter) 30px; display: grid; gap: 14px; }
 .hero h1 { font-size: clamp(1.6rem, 7vw, 3rem); letter-spacing: -0.01em; }
 .hero .sub { color: var(--on-navy); font-size: 1rem; max-width: var(--measure); }
@@ -157,11 +157,21 @@ html[data-lang='mne'] [data-lang-to='mne'] { color: var(--white); background: rg
   }
 }
 
-/* Final CTA */
+/* Photo bands: full bleed on phones, two up on desktop. Fixed ratio, so nothing shifts while loading. */
+.photo-band { margin: 0; display: grid; gap: 6px; }
+.shot { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--band); }
+.shot img { object-fit: cover; }
+.desktop-only { display: none; }
+
+/* Final CTA: the campus behind a navy veil, text kept at full contrast. */
 .final {
+  position: relative; isolation: isolate; overflow: hidden;
   background: var(--navy); color: var(--white); text-align: center;
-  padding: 52px var(--gutter); display: grid; gap: 8px; justify-items: center;
+  padding: 64px var(--gutter); display: grid; gap: 8px; justify-items: center;
 }
+.final-bg { position: absolute; inset: 0; z-index: -1; }
+.final-bg img { object-fit: cover; }
+.final-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(27, 26, 63, 0.82), rgba(38, 36, 83, 0.9)); }
 .final .when { font-family: var(--font-serif), Georgia, serif; font-size: clamp(1.375rem, 5vw, 1.875rem); font-weight: 700; max-width: 24ch; text-wrap: balance; }
 .final p { color: var(--on-navy); }
 .final .btn { margin-top: 18px; max-width: 420px; }
@@ -218,6 +228,10 @@ html[data-lang='mne'] [data-lang-to='mne'] { color: var(--white); background: rg
   .section h2 { margin-bottom: 0; }
   .meet { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; }
   .places { grid-template-columns: repeat(5, 1fr); }
+  .photo-band.pair { grid-template-columns: 1fr 1fr; }
+  .desktop-only { display: block; }
+  .shot.wide { aspect-ratio: 21 / 9; }
+  .final { padding: 96px var(--gutter); }
   .sticky { display: none; }
   .consent { left: auto; right: 24px; bottom: 24px; max-width: 400px; }
 }
