@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Widget } from '@typeform/embed-react';
-import type { Lang } from '@/lib/content';
+import { COPY, type Lang } from '@/lib/content';
 import { captureAttribution, fireLead, metaIds, newEventId, type Attribution, type Consent } from '@/lib/tracking';
 
 const FORMS: Record<Lang, string> = {
@@ -12,6 +12,7 @@ const FORMS: Record<Lang, string> = {
 
 export default function BookingForm({ lang, consent }: { lang: Lang; consent: Consent }) {
   const [attr, setAttr] = useState<Attribution | null>(null);
+  const box = useRef<HTMLDivElement>(null);
   const [ids, setIds] = useState({ fbp: '', fbc: '' });
   // One event id per page view: the browser Lead and the server (CAPI) Lead share it.
   const eventId = useRef<string>('');
@@ -61,6 +62,7 @@ export default function BookingForm({ lang, consent }: { lang: Lang; consent: Co
   if (!hidden) return <div className="form-placeholder" />;
 
   return (
+    <div ref={box} className="typeform-box">
     <Widget
       // Remount when the language or the tracking ids change, so Typeform gets current hidden fields.
       key={`${formId}:${hidden.fbp}:${hidden.fbc}:${hidden.ad_consent}`}
@@ -69,7 +71,9 @@ export default function BookingForm({ lang, consent }: { lang: Lang; consent: Co
       inlineOnMobile
       className="typeform"
       style={{ width: '100%', height: '100%' }}
+      onReady={() => box.current?.querySelector('iframe')?.setAttribute('title', COPY[lang].formLabel)}
       onSubmit={() => fireLead(lang, eventId.current)}
     />
+    </div>
   );
 }

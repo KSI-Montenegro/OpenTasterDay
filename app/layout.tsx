@@ -4,7 +4,7 @@ import { PT_Serif, Poppins } from 'next/font/google';
 import './globals.css';
 
 const serif = PT_Serif({ subsets: ['latin', 'latin-ext'], weight: ['700'], variable: '--font-serif', display: 'swap' });
-const sans = Poppins({ subsets: ['latin', 'latin-ext'], weight: ['400', '500', '600'], variable: '--font-sans', display: 'swap' });
+const sans = Poppins({ subsets: ['latin', 'latin-ext'], weight: ['400', '600'], variable: '--font-sans', display: 'swap' });
 
 const GA4 = process.env.NEXT_PUBLIC_GA4_ID || '';
 const ADS = (process.env.NEXT_PUBLIC_GOOGLE_ADS_SEND_TO || '').split('/')[0];
@@ -61,19 +61,20 @@ if (ksiGranted) window.ksiLoadPixel();
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${serif.variable} ${sans.variable}`}>
+    <html lang="en" className={`${serif.variable} ${sans.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: bootstrap }} />
-        {/* Hash language before first paint, so #mne visitors never see English flash. */}
+        {/* Language from the hash before first paint, so #mne visitors never see English. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var h=(location.hash||'').toLowerCase();if(h==='#mne'){document.documentElement.lang='sr-ME';document.documentElement.setAttribute('data-lang','mne');}})();`
+            __html: `(function(){var m=(location.hash||'').toLowerCase()==='#mne',d=document.documentElement;d.setAttribute('data-lang',m?'mne':'en');if(m)d.lang='sr-ME';})();`
           }}
         />
       </head>
       <body>
         {children}
-        {GTAG_ID ? <Script src={`https://www.googletagmanager.com/gtag/js?id=${GTAG_ID}`} strategy="afterInteractive" /> : null}
+        {/* Google's tag loads after the page; gtag() calls made earlier wait in dataLayer and are sent then. */}
+        {GTAG_ID ? <Script src={`https://www.googletagmanager.com/gtag/js?id=${GTAG_ID}`} strategy="lazyOnload" /> : null}
       </body>
     </html>
   );

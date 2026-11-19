@@ -10,7 +10,7 @@ export type Copy = {
   cta: string;
   urgency: string;
   scheduleTitle: string;
-  schedule: { time?: string; text: string }[];
+  schedule: { time: string; text: string; note?: string }[];
   meetTitle: string;
   meet: string[];
   forTitle: string;
@@ -43,7 +43,7 @@ export const COPY: Record<Lang, Copy> = {
       'Free Taster Morning on Friday 11 December. Your child joins a real IB lesson with a student buddy. You tour the school and ask our senior team anything.',
     cta: 'Book a free place',
     urgency: '50 places across all year groups. Registration closes Sunday 6 December, or sooner if places run out.',
-    scheduleTitle: 'WHAT HAPPENS ON THE DAY',
+    scheduleTitle: 'What happens on the day',
     schedule: [
       { time: '07:40', text: 'Check-in' },
       { time: '08:00', text: 'One-hour school tour with our senior team and student ambassadors' },
@@ -51,13 +51,16 @@ export const COPY: Record<Lang, Copy> = {
         time: '09:00',
         text: 'Your child joins a real lesson with a student buddy. You meet our senior team in the library for a short session and open Q&A.'
       },
-      { time: '09:50', text: 'Early Years and PYP families head home' },
-      { text: 'MYP students stay for a break activity run by our student ambassadors, then two more lessons.' },
+      {
+        time: '09:50',
+        text: 'Early Years and PYP families head home',
+        note: 'MYP students stay for a break activity run by our student ambassadors, then two more lessons.'
+      },
       { time: '11:55', text: 'MYP students finish' }
     ],
-    meetTitle: 'WHO YOU WILL MEET',
+    meetTitle: 'Who you will meet',
     meet: ['Head of School', 'MYP/DP Coordinator', 'Head of Student Support', 'Admissions'],
-    forTitle: 'WHO IT IS FOR',
+    forTitle: 'Who it is for',
     forBody:
       "Children from Early Years to Year 10. We place each child by date of birth, with a 1 September cut-off. Enter your child's date of birth in the form and we will place them in the right year group.",
     placesLabel: 'Places by year group:',
@@ -105,7 +108,7 @@ export const COPY: Record<Lang, Copy> = {
       'Besplatno Probno jutro u petak, 11. decembra. Vaše dijete ide na pravi IB čas uz učenika pratioca. Vi obilazite školu i postavljate pitanja rukovodstvu škole.',
     cta: 'Rezervišite Vaše mjesto',
     urgency: '50 mjesta za sve uzraste. Prijave traju do nedjelje, 6. decembra, ili do popune mjesta.',
-    scheduleTitle: 'KAKO IZGLEDA JUTRO',
+    scheduleTitle: 'Kako izgleda jutro',
     schedule: [
       { time: '07:40', text: 'Dolazak i prijava' },
       { time: '08:00', text: 'Obilazak škole sa rukovodstvom i učenicima ambasadorima, u trajanju od sat vremena' },
@@ -113,18 +116,21 @@ export const COPY: Record<Lang, Copy> = {
         time: '09:00',
         text: 'Vaše dijete ide na pravi čas uz učenika pratioca. Vi se u biblioteci sastajete sa rukovodstvom škole na kratkoj prezentaciji i otvorenim pitanjima.'
       },
-      { time: '09:50', text: 'Porodice djece iz Early Years i PYP programa idu kući' },
-      { text: 'MYP učenici ostaju na pauzi sa aktivnošću koju vode učenici ambasadori, a zatim imaju još dva časa.' },
+      {
+        time: '09:50',
+        text: 'Porodice djece iz Early Years i PYP programa idu kući',
+        note: 'MYP učenici ostaju na pauzi sa aktivnošću koju vode učenici ambasadori, a zatim imaju još dva časa.'
+      },
       { time: '11:55', text: 'MYP učenici završavaju' }
     ],
-    meetTitle: 'KOGA ĆETE UPOZNATI',
+    meetTitle: 'Koga ćete upoznati',
     meet: [
       'Direktor škole (Head of School)',
       'MYP/DP koordinator',
       'Rukovodilac službe za podršku učenicima (Head of Student Support)',
       'Tim za upis (Admissions)'
     ],
-    forTitle: 'ZA KOGA JE',
+    forTitle: 'Za koga je',
     forBody:
       'Za djecu od Early Years do Year 10. Djecu raspoređujemo po datumu rođenja, a granica je 1. septembar. Upišite datum rođenja djeteta u prijavu i mi ćemo ga rasporediti u odgovarajuću grupu.',
     placesLabel: 'Broj mjesta po grupi:',
@@ -132,7 +138,7 @@ export const COPY: Record<Lang, Copy> = {
     englishLabel: 'Engleski:',
     englishBody:
       'Djeca do Year 6 su dobrodošla bez obzira na nivo engleskog. Za Year 7 do Year 10 potreban je osnovni engleski, dovoljan da dijete prati jednostavna uputstva.',
-    faqTitle: 'ČESTA PITANJA',
+    faqTitle: 'Česta pitanja',
     faq: [
       {
         q: 'Da li je ovo testiranje?',
