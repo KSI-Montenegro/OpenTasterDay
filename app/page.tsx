@@ -56,7 +56,7 @@ function Body({ c, lang }: { c: Copy; lang: Lang }) {
 
       <figure className="photo-band pair">
         <Shot p={PHOTOS.classroom} lang={lang} sizes="(max-width: 900px) 100vw, 50vw" />
-        <Shot p={PHOTOS.labMicroscope} lang={lang} sizes="50vw" className="desktop-only" />
+        <Shot p={PHOTOS.heroLab} lang={lang} sizes="50vw" className="desktop-only" />
       </figure>
 
       <section className="band" aria-labelledby={`meet-${c.htmlLang}`}>
@@ -141,13 +141,13 @@ export default function Page() {
           <div className="hero-img">
             {/* Decorative: the headline next to it says what the photo shows. */}
             <Image
-              src={PHOTOS.heroLab.src}
+              src={PHOTOS.heroChild.src}
               alt=""
               fill
               priority
               quality={PHOTO_QUALITY}
-              sizes="(max-width: 900px) 100vw, 50vw"
-              style={{ objectPosition: PHOTOS.heroLab.focus }}
+              sizes="(max-width: 900px) 100vw, 56vw"
+              style={{ objectPosition: PHOTOS.heroChild.focus }}
             />
           </div>
           {LANGS.map((l) => (

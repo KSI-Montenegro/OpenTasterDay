@@ -14,6 +14,16 @@ export type Photo = {
 };
 
 export const PHOTOS = {
+  heroChild: {
+    src: '/img/hero-child.jpg',
+    width: 2000,
+    height: 1333,
+    alt: {
+      en: 'A smiling child in a paper pirate hat',
+      mne: 'Nasmijano dijete u papirnom gusarskom šeširu'
+    },
+    focus: '52% 38%'
+  },
   heroLab: {
     src: '/img/hero-lab.jpg',
     width: 2000,
