@@ -1,6 +1,8 @@
 // Page copy, exactly as supplied. Do not add claims, offers or extra text here.
 // Only the consent banner strings (needed for the cookie banner) were added.
 
+import { agesForGroup } from './yearGroup.ts';
+
 export type Lang = 'en' | 'mne';
 
 export type Copy = {
@@ -16,7 +18,8 @@ export type Copy = {
   forTitle: string;
   forBody: string;
   placesLabel: string;
-  places: { group: string; count: string }[];
+  places: { group: string; count: string; ages: string }[];
+  agesPrefix: string;
   englishLabel: string;
   englishBody: string;
   faqTitle: string;
@@ -32,7 +35,9 @@ const PLACES = 'Early Years 3 | Year 1 4 | Year 2 4 | Year 3 5 | Year 4 6 | Year
 export const placesLine = PLACES;
 const places = PLACES.split(' | ').map((p) => {
   const i = p.lastIndexOf(' ');
-  return { group: p.slice(0, i), count: p.slice(i + 1) };
+  const group = p.slice(0, i);
+  // Age band for the 2026-27 school year, from the placement sheet (lib/yearGroup.ts).
+  return { group, count: p.slice(i + 1), ages: agesForGroup(group) };
 });
 
 export const COPY: Record<Lang, Copy> = {
@@ -65,6 +70,7 @@ export const COPY: Record<Lang, Copy> = {
       "Children from Early Years to Year 10. We place each child by date of birth, with a 1 September cut-off. Enter your child's date of birth in the form and we will place them in the right year group.",
     placesLabel: 'Places by year group:',
     places,
+    agesPrefix: 'Ages',
     englishLabel: 'English:',
     englishBody:
       'Children up to Year 6 are welcome at any English level. Years 7 to 10 need basic English, enough to follow simple instructions.',
@@ -135,6 +141,7 @@ export const COPY: Record<Lang, Copy> = {
       'Za djecu od Early Years do Year 10. Djecu raspoređujemo po datumu rođenja, a granica je 1. septembar. Upišite datum rođenja djeteta u prijavu i mi ćemo ga rasporediti u odgovarajuću grupu.',
     placesLabel: 'Broj mjesta po grupi:',
     places,
+    agesPrefix: 'Uzrast',
     englishLabel: 'Engleski:',
     englishBody:
       'Djeca do Year 6 su dobrodošla bez obzira na nivo engleskog. Za Year 7 do Year 10 potreban je osnovni engleski, dovoljan da dijete prati jednostavna uputstva.',

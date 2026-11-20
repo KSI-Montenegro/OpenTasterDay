@@ -77,7 +77,12 @@ function Body({ c, lang }: { c: Copy; lang: Lang }) {
         <dl className="places">
           {c.places.map((p) => (
             <div key={p.group}>
-              <dt>{p.group}</dt>
+              <dt>
+                {p.group}
+                <span className="ages">
+                  {c.agesPrefix} {p.ages}
+                </span>
+              </dt>
               <dd>{p.count}</dd>
             </div>
           ))}

@@ -86,6 +86,8 @@ test('brevo attributes', () => {
   assert.equal(a.LANGUAGE, 'MNE');
   assert.equal(a.CHILD_DOB, '2016-03-05');
   assert.equal(a.STUDENT_NAME, 'Luka Petrović');
+  assert.equal(a.YEAR_GROUP, 'Year 6');
+  assert.equal(a.TASTER_GROUP, 'Year 6');
   assert.equal(a.UTM_SOURCE, 'facebook');
   assert.equal('GCLID' in a, false, 'empty values are left out');
   assert.equal(e164('067 123 456'), '+38267123456');

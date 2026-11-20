@@ -1,4 +1,5 @@
 import { languageOf, splitName, type Submission } from './tally.ts';
+import { yearGroupFor, OUTSIDE_TASTER } from '../yearGroup.ts';
 
 const API = 'https://api.brevo.com/v3';
 
@@ -33,6 +34,9 @@ export function contactAttributes(s: Submission): Record<string, string> {
     WHATSAPP: phone,
     STUDENT_NAME: s.childName,
     CHILD_DOB: s.childDob,
+    // Worked out from the date of birth (school placement sheet, 2026-27), for internal sorting.
+    YEAR_GROUP: yearGroupFor(s.childDob)?.label || '',
+    TASTER_GROUP: s.childDob ? yearGroupFor(s.childDob)?.tasterGroup || OUTSIDE_TASTER : '',
     LANGUAGE: languageOf(s).toUpperCase(),
     UTM_SOURCE: h.utm_source || '',
     UTM_MEDIUM: h.utm_medium || '',
@@ -59,7 +63,7 @@ export async function upsertContact(key: string, listId: number, s: Submission):
     if (!r.ok && r.status === 400) {
       // Last resort: an attribute missing in Brevo (e.g. CHILD_DOB not created yet). Save the essentials.
       const essentials = Object.fromEntries(
-        Object.entries(rest).filter(([k]) => ['FIRSTNAME', 'LASTNAME', 'LANGUAGE', 'STUDENT_NAME'].includes(k))
+        Object.entries(rest).filter(([k]) => ['FIRSTNAME', 'LASTNAME', 'LANGUAGE', 'STUDENT_NAME', 'YEAR_GROUP', 'TASTER_GROUP'].includes(k))
       );
       r = await call(key, '/contacts', body(essentials));
     }

@@ -143,7 +143,8 @@ html[data-lang='mne'] [data-lang-to='mne'] { color: var(--white); background: rg
 .places-label { font-family: var(--font-sans), system-ui, sans-serif; font-size: 1rem; font-weight: 600; margin: 28px 0 10px; }
 .places { margin: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; border-top: 1px solid var(--line); }
 .places div { display: flex; align-items: baseline; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--line); }
-.places dt { color: var(--ink-soft); }
+.places dt { color: var(--ink); font-weight: 500; }
+.places .ages { display: block; font-size: 0.8125rem; font-weight: 400; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .places dd { margin: 0; font-family: var(--font-serif), Georgia, serif; font-weight: 700; font-size: 1.1875rem; font-variant-numeric: tabular-nums; }
 .english { margin: 24px 0 28px; }
 .english strong { color: var(--ink); font-weight: 600; }
