@@ -18,10 +18,15 @@ export type Submission = {
   phone: string;
   childName: string;
   childDob: string; // YYYY-MM-DD
+  currentSchool: string;
+  currentGrade: string;
+  englishLevel: string; // "1", "2" or "3" ('' if not answered)
+  motherTongue: string;
+  medical: string;
   hidden: Record<string, string>;
 };
 
-type Field = { key?: string; label?: string; type?: string; value?: unknown };
+type Field = { key?: string; label?: string; type?: string; value?: unknown; options?: { id?: string; text?: string }[] };
 
 const str = (v: unknown): string => (v == null ? '' : Array.isArray(v) ? v.join(', ') : String(v)).trim();
 
@@ -36,6 +41,26 @@ export function isoDate(v: string): string {
 
 const PARENT = /parent|roditelj/i;
 const CHILD = /child|djete|dijete/i;
+const SCHOOL = /school|škol|skol/i;
+const GRADE = /grade|razred/i;
+const LEVEL = /english|englesk/i;
+const TONGUE = /tongue|maternji/i;
+const MEDICAL = /medical|allerg|alergij|zdravstv/i;
+
+// English level, the same 1-3 scale teachers use after the lesson. Stored in English for both forms.
+export const ENGLISH_LEVELS: Record<string, string> = {
+  '1': '1 - Little or no English',
+  '2': '2 - Follows simple instructions and talks about everyday things',
+  '3': '3 - Learns comfortably in English'
+};
+
+// Dropdown answers arrive as option ids plus the option list; return the chosen texts.
+function choiceText(f: Field | undefined): string {
+  if (!f) return '';
+  const ids = Array.isArray(f.value) ? f.value.map(String) : [str(f.value)];
+  const texts = ids.map((v) => f.options?.find((o) => o.id === v)?.text || v);
+  return str(texts);
+}
 
 // Field mapping for the KSI Taster Morning forms (EN and MNE):
 //   email, phone, date: by field type
@@ -47,9 +72,12 @@ export function parseSubmission(payload: unknown): Submission | null {
   if (!data || !Array.isArray(data.fields)) return null;
   const fields = data.fields;
   const ofType = (t: string) => fields.find((f) => f.type === t);
-  const texts = fields.filter((f) => f.type === 'INPUT_TEXT');
+  // Name candidates: text fields that are not one of the school questions ("Child's current school" mentions the child).
+  const texts = fields.filter((f) => f.type === 'INPUT_TEXT' && ![SCHOOL, GRADE, TONGUE].some((re) => re.test(f.label || '')));
   const parent = texts.find((f) => PARENT.test(f.label || '')) || texts[0];
   const child = texts.find((f) => CHILD.test(f.label || '') && f !== parent) || texts.find((f) => f !== parent);
+  const byLabel = (re: RegExp, types: string[]) => fields.find((f) => types.includes(f.type || '') && re.test(f.label || ''));
+  const level = choiceText(byLabel(LEVEL, ['DROPDOWN', 'MULTIPLE_CHOICE'])).match(/^\s*([123])\b/)?.[1] || '';
   const hidden: Record<string, string> = {};
   for (const f of fields) if (f.type === 'HIDDEN_FIELDS' && f.label) hidden[f.label] = str(f.value);
   return {
@@ -60,6 +88,11 @@ export function parseSubmission(payload: unknown): Submission | null {
     phone: str(ofType('INPUT_PHONE_NUMBER')?.value),
     childName: str(child?.value),
     childDob: isoDate(str(ofType('INPUT_DATE')?.value)),
+    currentSchool: str(byLabel(SCHOOL, ['INPUT_TEXT'])?.value),
+    currentGrade: str(byLabel(GRADE, ['INPUT_TEXT'])?.value),
+    englishLevel: level,
+    motherTongue: str(byLabel(TONGUE, ['INPUT_TEXT'])?.value),
+    medical: str(byLabel(MEDICAL, ['TEXTAREA', 'INPUT_TEXT'])?.value),
     hidden
   };
 }

@@ -37,6 +37,11 @@ export function contactAttributes(s: Submission): Record<string, string> {
     // Worked out from the date of birth (school placement sheet, 2026-27), for internal sorting.
     YEAR_GROUP: yearGroupFor(s.childDob)?.label || '',
     TASTER_GROUP: s.childDob ? yearGroupFor(s.childDob)?.tasterGroup || OUTSIDE_TASTER : '',
+    CURRENT_SCHOOL: s.currentSchool,
+    CURRENT_GRADE: s.currentGrade,
+    ENGLISH_LEVEL: s.englishLevel,
+    MOTHER_TONGUE: s.motherTongue,
+    // Medical information is health data: it goes to the staff sheet only, never to Brevo.
     LANGUAGE: languageOf(s).toUpperCase(),
     UTM_SOURCE: h.utm_source || '',
     UTM_MEDIUM: h.utm_medium || '',

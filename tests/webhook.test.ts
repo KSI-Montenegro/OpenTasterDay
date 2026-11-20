@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { verifySignature, parseSubmission, splitName, isoDate } from '../lib/server/tally.ts';
 import { contactAttributes, e164 } from '../lib/server/brevo.ts';
 import { buildLeadEvent } from '../lib/server/meta.ts';
+import { sheetRow, ageOn, localTime, SHEET_COLUMNS } from '../lib/server/sheet.ts';
 
 const hidden = (label: string, value: string) => ({ key: `question_h_${label}`, label, type: 'HIDDEN_FIELDS', value });
 
@@ -24,6 +25,21 @@ const payload = {
       { key: 'question_c', label: 'Telefon', type: 'INPUT_PHONE_NUMBER', value: '+38267123456' },
       { key: 'question_d', label: 'Ime i prezime djeteta', type: 'INPUT_TEXT', value: 'Luka Petrović' },
       { key: 'question_e', label: 'Datum rođenja djeteta', type: 'INPUT_DATE', value: '2016-03-05' },
+      { key: 'question_f', label: 'Škola koju dijete pohađa', type: 'INPUT_TEXT', value: 'OŠ Drago Milović' },
+      { key: 'question_g', label: 'Razred koji dijete pohađa', type: 'INPUT_TEXT', value: 'IV razred' },
+      {
+        key: 'question_h',
+        label: 'Nivo engleskog jezika',
+        type: 'DROPDOWN',
+        value: ['opt2'],
+        options: [
+          { id: 'opt1', text: '1 - Malo ili nimalo engleskog' },
+          { id: 'opt2', text: '2 - Prati jednostavna uputstva i priča o svakodnevnim stvarima' },
+          { id: 'opt3', text: '3 - Uči bez poteškoća na engleskom' }
+        ]
+      },
+      { key: 'question_i', label: 'Maternji jezik', type: 'INPUT_TEXT', value: 'Crnogorski' },
+      { key: 'question_j', label: 'Zdravstvene informacije ili alergije koje treba da znamo', type: 'TEXTAREA', value: 'Alergija na kikiriki' },
       hidden('lang', 'mne'),
       hidden('utm_source', 'facebook'),
       hidden('utm_campaign', 'taster'),
@@ -57,6 +73,11 @@ test('parse Tally fields by type, label and hidden fields', () => {
   assert.equal(s.childDob, '2016-03-05');
   assert.equal(s.hidden.event_id, 'ev-1');
   assert.equal(s.hidden.lang, 'mne');
+  assert.equal(s.currentSchool, 'OŠ Drago Milović');
+  assert.equal(s.currentGrade, 'IV razred');
+  assert.equal(s.englishLevel, '2');
+  assert.equal(s.motherTongue, 'Crnogorski');
+  assert.equal(s.medical, 'Alergija na kikiriki');
   assert.deepEqual(splitName(s.parentName), { first: 'Ana Marija', last: 'Petrović' });
 });
 
@@ -64,7 +85,19 @@ test('EN labels and order fallback for names', () => {
   const en = structuredClone(payload);
   en.data.fields[0].label = "Parent's first and last name";
   en.data.fields[3].label = "Child's first and last name";
-  assert.equal(parseSubmission(en)!.childName, 'Luka Petrović');
+  en.data.fields[5].label = "Child's current school"; // mentions the child, must not be taken as the child's name
+  en.data.fields[6].label = 'Current grade level';
+  en.data.fields[7].label = 'English level';
+  en.data.fields[8].label = 'Mother tongue';
+  en.data.fields[9].label = 'Any medical information or allergies we should know about';
+  const e = parseSubmission(en)!;
+  assert.equal(e.childName, 'Luka Petrović');
+  assert.equal(e.parentName, 'Ana Marija Petrović');
+  assert.equal(e.currentSchool, 'OŠ Drago Milović');
+  assert.equal(e.currentGrade, 'IV razred');
+  assert.equal(e.englishLevel, '2');
+  assert.equal(e.motherTongue, 'Crnogorski');
+  assert.equal(e.medical, 'Alergija na kikiriki');
   const odd = structuredClone(payload);
   odd.data.fields[0].label = 'Name';
   odd.data.fields[3].label = 'Other name';
@@ -89,6 +122,10 @@ test('brevo attributes', () => {
   assert.equal(a.YEAR_GROUP, 'Year 6');
   assert.equal(a.TASTER_GROUP, 'Year 6');
   assert.equal(a.UTM_SOURCE, 'facebook');
+  assert.equal(a.CURRENT_SCHOOL, 'OŠ Drago Milović');
+  assert.equal(a.ENGLISH_LEVEL, '2');
+  assert.equal(a.MOTHER_TONGUE, 'Crnogorski');
+  assert.equal(JSON.stringify(a).includes('kikiriki'), false, 'medical info never goes to Brevo');
   assert.equal('GCLID' in a, false, 'empty values are left out');
   assert.equal(e164('067 123 456'), '+38267123456');
   assert.equal(e164('0044 7700 900123'), '+447700900123');
@@ -106,4 +143,22 @@ test('meta lead event uses the browser event_id and hashes PII', () => {
   assert.equal(ev.user_data.fbp, 'fb.1.1.2');
   assert.equal(ev.user_data.client_user_agent, 'UA');
   assert.equal(JSON.stringify(ev).includes('ana@example.com'), false);
+});
+
+test('sheet row', () => {
+  const row = sheetRow(parseSubmission(payload)!);
+  assert.equal(row.length, SHEET_COLUMNS.length);
+  const at = (c: (typeof SHEET_COLUMNS)[number]) => row[SHEET_COLUMNS.indexOf(c)];
+  assert.equal(at('Submitted (Montenegro time)'), '2026-11-20 10:00');
+  assert.equal(at('Language'), 'MNE');
+  assert.equal(at('Date of birth'), '05.03.2016');
+  assert.equal(at('Age on 11 Dec'), '10');
+  assert.equal(at('KSI year group'), 'Year 6');
+  assert.equal(at('Taster group'), 'Year 6');
+  assert.equal(at('English level (parent)'), '2 - Follows simple instructions and talks about everyday things');
+  assert.equal(at('Medical / allergies'), 'Alergija na kikiriki');
+  assert.equal(at('Response ID'), 'resp123');
+  assert.equal(ageOn('2016-12-11'), '10');
+  assert.equal(ageOn('2016-12-12'), '9');
+  assert.equal(localTime('2026-07-01T10:00:00Z'), '2026-07-01 12:00');
 });

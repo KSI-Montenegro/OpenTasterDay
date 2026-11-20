@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { languageOf, parseSubmission, verifySignature } from '@/lib/server/tally';
 import { sendConfirmation, upsertContact } from '@/lib/server/brevo';
 import { buildLeadEvent, sendLead } from '@/lib/server/meta';
+import { appendToSheet } from '@/lib/server/sheet';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,7 @@ export const dynamic = 'force-dynamic';
 // 2. Create or update the Brevo contact and add it to the event list.
 // 3. Send the confirmation email from the template for the visitor's language.
 // 4. Send the Meta Conversions API Lead (same event_id as the browser Pixel event).
+// 5. Add a row to the shared applicant sheet (logged on failure, never retried).
 export async function POST(req: Request) {
   const raw = await req.text();
   const secret = process.env.TALLY_SIGNING_SECRET || '';
@@ -75,6 +77,16 @@ export async function POST(req: Request) {
     if (!capi.ok) console.error('Meta CAPI failed', capi.status, capi.detail);
   } else {
     result.capi = pixelId && token ? 'skipped: no ad consent' : 'skipped: not configured';
+  }
+
+  // Shared applicant sheet. After the email on purpose: a sheet problem must not block or repeat it.
+  const sheetUrl = process.env.SHEET_WEBHOOK_URL || '';
+  if (sheetUrl) {
+    const sheet = await appendToSheet(sheetUrl, process.env.SHEET_WEBHOOK_TOKEN || '', s);
+    result.sheet = sheet.ok ? 'ok' : sheet.status;
+    if (!sheet.ok) console.error('Sheet append failed', sheet.status, sheet.detail);
+  } else {
+    result.sheet = 'skipped: SHEET_WEBHOOK_URL missing';
   }
 
   console.log('Taster booking', JSON.stringify({ response: s.responseId, ...result }));
