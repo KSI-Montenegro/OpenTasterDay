@@ -1,5 +1,6 @@
 import { ENGLISH_LEVELS, languageOf, type Submission } from './tally.ts';
 import { yearGroupFor, OUTSIDE_TASTER } from '../yearGroup.ts';
+import type { Status } from '../places.ts';
 
 // The shared applicant sheet. A Google Apps Script web app (scripts/sheet-apps-script.gs)
 // appends each row and skips a Response ID it already has, so a re-send is harmless.
@@ -32,6 +33,10 @@ export function localTime(iso: string): string {
 // dd.MM.yyyy, as parents wrote it.
 const localDate = (iso: string) => (iso ? iso.split('-').reverse().join('.') : '');
 
+export function tasterGroupOf(s: Submission): string {
+  return s.childDob ? yearGroupFor(s.childDob)?.tasterGroup || OUTSIDE_TASTER : '';
+}
+
 export function sheetRow(s: Submission): string[] {
   const g = s.childDob ? yearGroupFor(s.childDob) : null;
   return [
@@ -44,7 +49,7 @@ export function sheetRow(s: Submission): string[] {
     localDate(s.childDob),
     ageOn(s.childDob),
     g?.label || '',
-    s.childDob ? g?.tasterGroup || OUTSIDE_TASTER : '',
+    tasterGroupOf(s),
     s.currentSchool,
     s.currentGrade,
     ENGLISH_LEVELS[s.englishLevel] || '',
@@ -56,22 +61,43 @@ export function sheetRow(s: Submission): string[] {
   ];
 }
 
-export type SheetResult = { ok: boolean; status: number; detail?: string };
+export type SheetResult = { ok: boolean; status: number; detail?: string; bookingStatus?: Status; duplicate?: boolean };
 
-export async function appendToSheet(url: string, token: string, s: Submission): Promise<SheetResult> {
+async function post(url: string, body: unknown): Promise<{ res: Response; text: string }> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    redirect: 'follow',
+    signal: AbortSignal.timeout(15000)
+  });
+  return { res, text: await res.text() };
+}
+
+// Adds the booking. The sheet decides Confirmed or Waitlist against the group's cap (under a lock).
+export async function appendToSheet(url: string, token: string, s: Submission, cap: number): Promise<SheetResult> {
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token, row: sheetRow(s) }),
-      redirect: 'follow',
-      signal: AbortSignal.timeout(15000)
-    });
-    const text = (await res.text()).slice(0, 300);
+    const { res, text } = await post(url, { token, action: 'append', row: sheetRow(s), cap });
+    let j: { ok?: boolean; status?: string; duplicate?: boolean } = {};
+    try {
+      j = JSON.parse(text);
+    } catch {}
     // The script answers {"ok":true,...}; anything else (login page, error) is a failure.
-    const ok = res.ok && /"ok"\s*:\s*true/.test(text);
-    return { ok, status: res.status, detail: ok ? text : text || undefined };
+    if (!res.ok || j.ok !== true) return { ok: false, status: res.status, detail: text.slice(0, 300) || undefined };
+    const bookingStatus: Status = j.status === 'Waitlist' ? 'Waitlist' : 'Confirmed';
+    return { ok: true, status: res.status, bookingStatus, duplicate: !!j.duplicate, detail: text.slice(0, 300) };
   } catch (e) {
     return { ok: false, status: 0, detail: String(e) };
+  }
+}
+
+// Confirmed bookings per Taster group, or null if the sheet cannot be read.
+export async function fetchCounts(url: string, token: string): Promise<Record<string, number> | null> {
+  try {
+    const { res, text } = await post(url, { token, action: 'counts' });
+    const j = JSON.parse(text) as { ok?: boolean; counts?: Record<string, number> };
+    return res.ok && j.ok === true && j.counts && typeof j.counts === 'object' ? j.counts : null;
+  } catch {
+    return null;
   }
 }

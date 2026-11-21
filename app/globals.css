@@ -145,6 +145,8 @@ html[data-lang='mne'] [data-lang-to='mne'] { color: var(--white); background: rg
 .places div { display: flex; align-items: baseline; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--line); }
 .places dt { color: var(--ink); font-weight: 500; }
 .places .ages { display: block; font-size: 0.8125rem; font-weight: 400; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.places .left { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: var(--band); color: var(--ink); }
+.places .left.full { background: var(--navy); color: var(--white); }
 .places dd { margin: 0; font-family: var(--font-serif), Georgia, serif; font-weight: 700; font-size: 1.1875rem; font-variant-numeric: tabular-nums; }
 .english { margin: 24px 0 28px; }
 .english strong { color: var(--ink); font-weight: 600; }
@@ -194,6 +196,24 @@ html[data-lang='mne'] [data-lang-to='mne'] { color: var(--white); background: rg
 /* Form: space reserved so nothing jumps when Tally loads; Tally then sizes the iframe to the form. */
 .book { min-height: 600px; max-width: 680px; margin: 0 auto; padding: 32px var(--gutter) 8px; scroll-margin-top: 64px; }
 .tally { display: block; width: 100%; min-height: 560px; border: 0; }
+/* Booking step 1: date of birth */
+.book.step-dob { min-height: 0; padding-bottom: 32px; }
+.dob { display: grid; gap: 10px; }
+.dob label { font-weight: 600; }
+.dob-row { display: grid; gap: 10px; }
+.dob input {
+  font: inherit; font-size: 1rem; min-height: 52px; padding: 0 14px; width: 100%;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--white); color: var(--ink);
+}
+.dob input:focus-visible { outline: 3px solid var(--cta); outline-offset: 2px; }
+.dob-msg { font-size: 0.9375rem; }
+.dob-msg.error { color: #b3261e; }
+.check-line { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; padding: 14px 16px; margin-bottom: 12px; border-radius: 12px; background: var(--band); }
+.check-line p { font-weight: 600; }
+.check-line.waitlist { background: var(--navy); }
+.check-line.waitlist p { color: var(--white); }
+.check-line.waitlist .link { color: var(--on-navy); }
+.waitlist-done { padding: 20px 16px; font-size: 1.0625rem; font-weight: 600; }
 .form-placeholder { height: 560px; border-radius: 12px; background: var(--band); }
 .form-missing { margin: 24px var(--gutter); padding: 20px; border: 2px dashed var(--cta); border-radius: 12px; font-size: 0.875rem; }
 
@@ -245,6 +265,7 @@ html[data-lang='mne'] [data-lang-to='mne'] { color: var(--white); background: rg
   .section h2 { margin-bottom: 0; }
   .meet { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; }
   .places { grid-template-columns: repeat(5, 1fr); }
+  .dob-row { grid-template-columns: 1fr auto; }
   .photo-band.pair { grid-template-columns: 1fr 1fr; }
   .desktop-only { display: block; }
   .shot.wide { aspect-ratio: 21 / 9; }

@@ -33,7 +33,15 @@ function loadEmbedScript(): Promise<void> {
   });
 }
 
-export default function BookingForm({ lang, consent }: { lang: Lang; consent: Consent }) {
+type Props = {
+  lang: Lang;
+  consent: Consent;
+  childDob: string; // YYYY-MM-DD, from the date of birth step
+  status: 'confirmed' | 'waitlist'; // what the page saw; the server makes the final call
+  onSubmitted?: () => void;
+};
+
+export default function BookingForm({ lang, consent, childDob, status, onSubmitted }: Props) {
   const [attr, setAttr] = useState<Attribution | null>(null);
   const [ids, setIds] = useState({ fbp: '', fbc: '' });
   const frame = useRef<HTMLIFrameElement>(null);
@@ -82,10 +90,12 @@ export default function BookingForm({ lang, consent }: { lang: Lang; consent: Co
       event_id: eventId.current,
       // Needed by the server-side Meta event: consent choice and browser user agent.
       ad_consent: consent === 'granted' ? 'granted' : 'denied',
-      user_agent: navigator.userAgent.slice(0, 250)
+      user_agent: navigator.userAgent.slice(0, 250),
+      child_dob: childDob,
+      status
     });
     return `https://tally.so/embed/${formId}?${p.toString()}`;
-  }, [attr, ids, lang, consent, formId]);
+  }, [attr, ids, lang, consent, formId, childDob, status]);
 
   // Hand the iframe to Tally's script for auto height; without the script it still works at a fixed height.
   useEffect(() => {
@@ -114,10 +124,11 @@ export default function BookingForm({ lang, consent }: { lang: Lang; consent: Co
       if (msg.event !== 'Tally.FormSubmitted' || (msg.payload?.formId && msg.payload.formId !== formId) || leadSent.current) return;
       leadSent.current = true;
       fireLead(lang, eventId.current);
+      onSubmitted?.();
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [lang, formId]);
+  }, [lang, formId, onSubmitted]);
 
   if (!formId) {
     return <div className="form-missing">Tally form ID missing: NEXT_PUBLIC_TALLY_{lang.toUpperCase()}</div>;

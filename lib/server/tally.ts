@@ -87,7 +87,8 @@ export function parseSubmission(payload: unknown): Submission | null {
     email: str(ofType('INPUT_EMAIL')?.value).toLowerCase(),
     phone: str(ofType('INPUT_PHONE_NUMBER')?.value),
     childName: str(child?.value),
-    childDob: isoDate(str(ofType('INPUT_DATE')?.value)),
+    // From the form's date question, or the hidden field filled by the page's date of birth step.
+    childDob: isoDate(str(ofType('INPUT_DATE')?.value)) || isoDate(hidden.child_dob || ''),
     currentSchool: str(byLabel(SCHOOL, ['INPUT_TEXT'])?.value),
     currentGrade: str(byLabel(GRADE, ['INPUT_TEXT'])?.value),
     englishLevel: level,

@@ -82,6 +82,8 @@ function Body({ c, lang }: { c: Copy; lang: Lang }) {
                 <span className="ages">
                   {c.agesPrefix} {p.ages}
                 </span>
+                {/* Filled in after load from the live places count; stays empty if that fails. */}
+                <span className="left" data-left-group={p.group} hidden />
               </dt>
               <dd>{p.count}</dd>
             </div>

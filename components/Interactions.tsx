@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { COPY, langFromHash, type Lang } from '@/lib/content';
+import { COPY, fill, langFromHash, type Lang } from '@/lib/content';
+import { loadAvailability } from '@/lib/availabilityClient';
+import DobCheck, { checkLine, type Check } from './DobCheck';
 import { readConsent, type Consent } from '@/lib/tracking';
 import ConsentBanner from './ConsentBanner';
 
-// The form (Tally iframe) is the heaviest thing on the page, so it loads only
-// when the visitor nears the form or taps a booking button.
+// Booking is two steps: the child's date of birth (checks places for that group), then the form.
+// The form (Tally iframe) is the heaviest thing on the page, so it loads only after step one.
 const BookingForm = dynamic(() => import('./BookingForm'), { ssr: false, loading: () => <div className="form-placeholder" /> });
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -16,7 +18,9 @@ export default function Interactions() {
   const [lang, setLang] = useState<Lang>('en');
   const [consent, setConsent] = useState<Consent>(null);
   const [ready, setReady] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [check, setCheck] = useState<Check | null>(null);
+  const [left, setLeft] = useState<number | undefined>(undefined);
+  const [waitlistDone, setWaitlistDone] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [sticky, setSticky] = useState(false);
   const bookRef = useRef<HTMLElement>(null);
@@ -49,9 +53,37 @@ export default function Interactions() {
   }, []);
 
   const goToForm = useCallback(() => {
-    setShowForm(true);
+    void loadAvailability(); // warm it up while the parent types the date
     bookRef.current?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    window.setTimeout(() => bookRef.current?.querySelector<HTMLInputElement>('.dob input')?.focus({ preventScroll: true }), 450);
   }, []);
+
+  // Places left next to each group in the "Places by year group" table, once the page has settled.
+  useEffect(() => {
+    const t = window.setTimeout(async () => {
+      const a = await loadAvailability();
+      if (!a?.live) return;
+      document.querySelectorAll<HTMLElement>('[data-left-group]').forEach((el) => {
+        const g = a.groups[el.dataset.leftGroup || ''];
+        const l = (el.closest('[data-l]') as HTMLElement | null)?.dataset.l === 'mne' ? 'mne' : 'en';
+        if (!g) return;
+        el.textContent = g.left === 0 ? COPY[l].book.badgeFull : fill(COPY[l].book.badgeLeft, { n: g.left });
+        el.classList.toggle('full', g.left === 0);
+        el.hidden = false;
+      });
+    }, 1500);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  const onReady = useCallback(async (c: Check) => {
+    setCheck(c);
+    setWaitlistDone(false);
+    const a = await loadAvailability();
+    setLeft(a?.live ? a.groups[c.group]?.left : undefined);
+  }, []);
+  const onSubmitted = useCallback(() => {
+    if (check?.status === 'waitlist') setWaitlistDone(true);
+  }, [check]);
 
   // One listener for every server-rendered button.
   useEffect(() => {
@@ -65,15 +97,6 @@ export default function Interactions() {
     document.addEventListener('click', onClick);
     return () => document.removeEventListener('click', onClick);
   }, [goToForm]);
-
-  // Load the form when it is about a screen away.
-  useEffect(() => {
-    const book = bookRef.current;
-    if (!book || showForm) return;
-    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && setShowForm(true), { rootMargin: '1200px 0px' });
-    io.observe(book);
-    return () => io.disconnect();
-  }, [showForm]);
 
   // Mobile booking bar: after the hero, hidden while the form is on screen.
   useEffect(() => {
@@ -98,8 +121,26 @@ export default function Interactions() {
 
   return (
     <>
-      <section id="book" ref={bookRef} className="book" aria-label={c.formLabel}>
-        {ready && showForm ? <BookingForm lang={lang} consent={consent} /> : <div className="form-placeholder" />}
+      <section id="book" ref={bookRef} className={`book${check ? '' : ' step-dob'}`} aria-label={c.formLabel}>
+        {!check ? (
+          <DobCheck key={lang} lang={lang} onReady={onReady} />
+        ) : (
+          <>
+            <div className={`check-line${check.status === 'waitlist' ? ' waitlist' : ''}`} role="status">
+              <p>{checkLine(lang, check, left)}</p>
+              <button type="button" className="link" onClick={() => setCheck(null)}>
+                {c.book.change}
+              </button>
+            </div>
+            {waitlistDone ? (
+              <p className="waitlist-done">{c.book.waitlistThanks}</p>
+            ) : ready ? (
+              <BookingForm lang={lang} consent={consent} childDob={check.dob} status={check.status} onSubmitted={onSubmitted} />
+            ) : (
+              <div className="form-placeholder" />
+            )}
+          </>
+        )}
       </section>
 
       <div className={`sticky${sticky ? ' on' : ''}`} aria-hidden={!sticky}>

@@ -2,6 +2,7 @@
 // Only the consent banner strings (needed for the cookie banner) were added.
 
 import { agesForGroup } from './yearGroup.ts';
+import { PLACES, PLACES_LINE } from './places.ts';
 
 export type Lang = 'en' | 'mne';
 
@@ -28,17 +29,27 @@ export type Copy = {
   finalLimited: string;
   formLabel: string;
   consent: { text: string; accept: string; decline: string; settings: string };
+  // Date of birth step before the form, and live places. {group}, {ages}, {n} are filled in.
+  book: {
+    dobLabel: string;
+    dobButton: string;
+    dobMissing: string;
+    change: string;
+    groupOnly: string;
+    placesLeft: string;
+    placeLeft: string;
+    full: string;
+    outside: string;
+    badgeLeft: string;
+    badgeFull: string;
+    waitlistThanks: string;
+  };
 };
 
-// "Early Years 3 | Year 1 4 | ..." as written, split into group and number.
-const PLACES = 'Early Years 3 | Year 1 4 | Year 2 4 | Year 3 5 | Year 4 6 | Year 5 6 | Year 6 6 | Year 7/8 4 | Year 9 6 | Year 10 6';
-export const placesLine = PLACES;
-const places = PLACES.split(' | ').map((p) => {
-  const i = p.lastIndexOf(' ');
-  const group = p.slice(0, i);
-  // Age band for the 2026-27 school year, from the placement sheet (lib/yearGroup.ts).
-  return { group, count: p.slice(i + 1), ages: agesForGroup(group) };
-});
+// "Early Years 3 | Year 1 4 | ..." as written (lib/places.ts), with the age band for the
+// 2026-27 school year from the placement sheet (lib/yearGroup.ts).
+export const placesLine = PLACES_LINE;
+const places = PLACES.map((p) => ({ ...p, ages: agesForGroup(p.group) }));
 
 export const COPY: Record<Lang, Copy> = {
   en: {
@@ -105,6 +116,20 @@ export const COPY: Record<Lang, Copy> = {
       accept: 'Allow',
       decline: 'Decline',
       settings: 'Cookies'
+    },
+    book: {
+      dobLabel: "Child's date of birth",
+      dobButton: 'Continue',
+      dobMissing: "Please enter your child's date of birth.",
+      change: 'Change date',
+      groupOnly: '{group}, ages {ages}.',
+      placesLeft: '{group}, ages {ages}. {n} places left.',
+      placeLeft: '{group}, ages {ages}. 1 place left.',
+      full: '{group} is full. Leave your details and we will add you to the waitlist and contact you if a place opens.',
+      outside: 'The Taster Morning is for children from Early Years to Year 10.',
+      badgeLeft: '{n} left',
+      badgeFull: 'Full',
+      waitlistThanks: 'You are on the waitlist for the Taster Morning. We will contact you if a place opens.'
     }
   },
   mne: {
@@ -176,8 +201,24 @@ export const COPY: Record<Lang, Copy> = {
       accept: 'Dozvoli',
       decline: 'Odbij',
       settings: 'Kolačići'
+    },
+    book: {
+      dobLabel: 'Datum rođenja djeteta',
+      dobButton: 'Nastavi',
+      dobMissing: 'Unesite datum rođenja djeteta.',
+      change: 'Promijeni datum',
+      groupOnly: '{group}, uzrast {ages}.',
+      placesLeft: '{group}, uzrast {ages}. Slobodnih mjesta: {n}.',
+      placeLeft: '{group}, uzrast {ages}. Slobodnih mjesta: 1.',
+      full: '{group} je popunjen. Ostavite podatke i staćemo Vas na listu čekanja i javiti se ako se mjesto oslobodi.',
+      outside: 'Probno jutro je za djecu od Early Years do Year 10.',
+      badgeLeft: 'Još {n}',
+      badgeFull: 'Popunjeno',
+      waitlistThanks: 'Na listi ste čekanja za Probno jutro. Javićemo Vam se ako se mjesto oslobodi.'
     }
   }
 };
+
+export const fill = (t: string, v: Record<string, string | number>) => t.replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ''));
 
 export const langFromHash = (hash: string): Lang => (hash.replace('#', '').toLowerCase() === 'mne' ? 'mne' : 'en');

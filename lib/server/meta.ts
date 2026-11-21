@@ -6,7 +6,7 @@ const norm = (v: string) => v.trim().toLowerCase();
 
 // Meta Conversions API "Lead" with the same event_id as the browser Pixel event,
 // so Meta keeps one of the two. Sent only when the visitor allowed ad cookies.
-export function buildLeadEvent(s: Submission, siteUrl: string) {
+export function buildLeadEvent(s: Submission, siteUrl: string, status?: string) {
   const h = s.hidden;
   const { first, last } = splitName(s.parentName);
   const phoneDigits = s.phone.replace(/\D/g, '');
@@ -26,7 +26,7 @@ export function buildLeadEvent(s: Submission, siteUrl: string) {
     action_source: 'website',
     event_source_url: siteUrl ? `${siteUrl.replace(/\/$/, '')}/#${lang}` : undefined,
     user_data,
-    custom_data: { language: lang }
+    custom_data: status ? { language: lang, status: status.toLowerCase() } : { language: lang }
   };
 }
 

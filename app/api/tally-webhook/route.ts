@@ -2,17 +2,20 @@ import { NextResponse } from 'next/server';
 import { languageOf, parseSubmission, verifySignature } from '@/lib/server/tally';
 import { sendConfirmation, upsertContact } from '@/lib/server/brevo';
 import { buildLeadEvent, sendLead } from '@/lib/server/meta';
-import { appendToSheet } from '@/lib/server/sheet';
+import { appendToSheet, tasterGroupOf, type SheetResult } from '@/lib/server/sheet';
+import { decideStatus, templateFor } from '@/lib/server/booking';
+import { capsWith } from '@/lib/places';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Tally calls this when a parent submits the booking form.
 // 1. Verify the Tally signature.
-// 2. Create or update the Brevo contact and add it to the event list.
-// 3. Send the confirmation email from the template for the visitor's language.
-// 4. Send the Meta Conversions API Lead (same event_id as the browser Pixel event).
-// 5. Add a row to the shared applicant sheet (logged on failure, never retried).
+// 2. Add the booking to the shared applicant sheet. The sheet decides Confirmed or Waitlist
+//    against the places for the child's group (under a lock, so the last place goes to one parent).
+// 3. Create or update the Brevo contact (with STATUS) and add it to the event list.
+// 4. Email the parent: the confirmation, or the waitlist message.
+// 5. Send the Meta Conversions API Lead (same event_id as the browser Pixel event).
 export async function POST(req: Request) {
   const raw = await req.text();
   const secret = process.env.TALLY_SIGNING_SECRET || '';
@@ -37,30 +40,46 @@ export async function POST(req: Request) {
   const lang = languageOf(s);
   const result: Record<string, unknown> = { lang };
 
+  // Sheet first: it holds the places count. A sheet problem is logged and never blocks the email.
+  // A Tally retry is safe: the sheet returns the stored status for a Response ID it already has.
+  const sheetUrl = process.env.SHEET_WEBHOOK_URL || '';
+  let sheet: SheetResult | null = null;
+  if (sheetUrl) {
+    const caps = capsWith(process.env.CAP_OVERRIDE);
+    sheet = await appendToSheet(sheetUrl, process.env.SHEET_WEBHOOK_TOKEN || '', s, caps[tasterGroupOf(s)] ?? 0);
+    result.sheet = sheet.ok ? (sheet.duplicate ? 'duplicate' : 'ok') : sheet.status;
+    if (!sheet.ok) console.error('Sheet append failed', sheet.status, sheet.detail);
+  } else {
+    result.sheet = 'skipped: SHEET_WEBHOOK_URL missing';
+  }
+  const status = decideStatus(sheet, s.hidden.status);
+  result.status = status;
+
   // Brevo contact + list. A failure here returns 500 so Tally retries the webhook.
   const brevoKey = process.env.BREVO_API_KEY || '';
   const listId = parseInt(process.env.BREVO_LIST_ID || '', 10);
   if (brevoKey && listId) {
-    const contact = await upsertContact(brevoKey, listId, s);
+    const contact = await upsertContact(brevoKey, listId, s, status);
     result.contact = contact.status;
     if (!contact.ok) {
       console.error('Brevo contact failed', contact.status, contact.detail);
       return NextResponse.json({ ok: false, ...result }, { status: 500 });
     }
-    const templateId = parseInt((lang === 'mne' ? process.env.BREVO_TEMPLATE_MNE : process.env.BREVO_TEMPLATE_EN) || '', 10);
+    const templateId = templateFor(lang, status, process.env);
     if (templateId) {
       // Not retried on failure, so a parent never gets the email twice.
       const mail = await sendConfirmation(brevoKey, templateId, s);
       result.email = mail.status;
-      if (!mail.ok) console.error('Brevo confirmation email failed', mail.status, mail.detail);
+      if (!mail.ok) console.error('Brevo email failed', status, mail.status, mail.detail);
     } else {
-      result.email = 'skipped: no template id';
+      result.email = `skipped: no ${status} template id`;
+      console.error('No Brevo template for', lang, status);
     }
   } else {
     result.contact = 'skipped: BREVO_API_KEY or BREVO_LIST_ID missing';
   }
 
-  // Meta Conversions API, only with the visitor's ad consent.
+  // Meta Conversions API, only with the visitor's ad consent. Waitlist sign-ups are leads too.
   const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID || '';
   const token = process.env.META_CAPI_TOKEN || '';
   if (pixelId && token && s.hidden.ad_consent === 'granted') {
@@ -71,22 +90,12 @@ export async function POST(req: Request) {
         version: process.env.META_API_VERSION || 'v23.0',
         testCode: process.env.META_TEST_EVENT_CODE || undefined
       },
-      buildLeadEvent(s, process.env.SITE_URL || '')
+      buildLeadEvent(s, process.env.SITE_URL || '', status)
     );
     result.capi = capi.status;
     if (!capi.ok) console.error('Meta CAPI failed', capi.status, capi.detail);
   } else {
     result.capi = pixelId && token ? 'skipped: no ad consent' : 'skipped: not configured';
-  }
-
-  // Shared applicant sheet. After the email on purpose: a sheet problem must not block or repeat it.
-  const sheetUrl = process.env.SHEET_WEBHOOK_URL || '';
-  if (sheetUrl) {
-    const sheet = await appendToSheet(sheetUrl, process.env.SHEET_WEBHOOK_TOKEN || '', s);
-    result.sheet = sheet.ok ? 'ok' : sheet.status;
-    if (!sheet.ok) console.error('Sheet append failed', sheet.status, sheet.detail);
-  } else {
-    result.sheet = 'skipped: SHEET_WEBHOOK_URL missing';
   }
 
   console.log('Taster booking', JSON.stringify({ response: s.responseId, ...result }));

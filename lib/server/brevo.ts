@@ -23,7 +23,7 @@ export function e164(phone: string): string {
   return /^\+\d{8,15}$/.test(d) ? d : '';
 }
 
-export function contactAttributes(s: Submission): Record<string, string> {
+export function contactAttributes(s: Submission, status?: string): Record<string, string> {
   const { first, last } = splitName(s.parentName);
   const phone = e164(s.phone);
   const h = s.hidden;
@@ -42,6 +42,7 @@ export function contactAttributes(s: Submission): Record<string, string> {
     ENGLISH_LEVEL: s.englishLevel,
     MOTHER_TONGUE: s.motherTongue,
     // Medical information is health data: it goes to the staff sheet only, never to Brevo.
+    STATUS: status || '',
     LANGUAGE: languageOf(s).toUpperCase(),
     UTM_SOURCE: h.utm_source || '',
     UTM_MEDIUM: h.utm_medium || '',
@@ -56,8 +57,8 @@ export function contactAttributes(s: Submission): Record<string, string> {
 }
 
 // Create or update the contact and add it to the event list.
-export async function upsertContact(key: string, listId: number, s: Submission): Promise<Result> {
-  const attributes = contactAttributes(s);
+export async function upsertContact(key: string, listId: number, s: Submission, status?: string): Promise<Result> {
+  const attributes = contactAttributes(s, status);
   const body = (a: Record<string, string>) => ({ email: s.email, attributes: a, listIds: [listId], updateEnabled: true });
   let r = await call(key, '/contacts', body(attributes));
   if (!r.ok && r.status === 400) {
@@ -68,7 +69,7 @@ export async function upsertContact(key: string, listId: number, s: Submission):
     if (!r.ok && r.status === 400) {
       // Last resort: an attribute missing in Brevo (e.g. CHILD_DOB not created yet). Save the essentials.
       const essentials = Object.fromEntries(
-        Object.entries(rest).filter(([k]) => ['FIRSTNAME', 'LASTNAME', 'LANGUAGE', 'STUDENT_NAME', 'YEAR_GROUP', 'TASTER_GROUP'].includes(k))
+        Object.entries(rest).filter(([k]) => ['FIRSTNAME', 'LASTNAME', 'LANGUAGE', 'STUDENT_NAME', 'YEAR_GROUP', 'TASTER_GROUP', 'STATUS'].includes(k))
       );
       r = await call(key, '/contacts', body(essentials));
     }
@@ -85,7 +86,9 @@ export async function sendConfirmation(key: string, templateId: number, s: Submi
       PARENT_NAME: s.parentName,
       FIRSTNAME: splitName(s.parentName).first,
       CHILD_NAME: s.childName,
-      CHILD_DOB: s.childDob
+      CHILD_DOB: s.childDob,
+      // Used by the waitlist email ("All places in Year 4 are taken").
+      TASTER_GROUP: s.childDob ? yearGroupFor(s.childDob)?.tasterGroup || '' : ''
     },
     tags: ['taster-morning']
   });

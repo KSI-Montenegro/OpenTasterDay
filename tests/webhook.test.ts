@@ -106,6 +106,17 @@ test('EN labels and order fallback for names', () => {
   assert.equal(s.childName, 'Luka Petrović');
 });
 
+test('date of birth from the hidden field when the form has no date question', () => {
+  const p2 = structuredClone(payload);
+  p2.data.fields = p2.data.fields.filter((f) => f.type !== 'INPUT_DATE');
+  p2.data.fields.push(hidden('child_dob', '2016-03-05'), hidden('status', 'waitlist'));
+  const s = parseSubmission(p2)!;
+  assert.equal(s.childDob, '2016-03-05');
+  assert.equal(s.hidden.status, 'waitlist');
+  assert.equal(contactAttributes(s, 'Waitlist').STATUS, 'Waitlist');
+  assert.equal(buildLeadEvent(s, '', 'Waitlist').custom_data.status, 'waitlist');
+});
+
 test('date formats', () => {
   assert.equal(isoDate('2016-03-05'), '2016-03-05');
   assert.equal(isoDate('5.3.2016'), '2016-03-05');

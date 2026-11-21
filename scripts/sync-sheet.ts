@@ -1,9 +1,11 @@
 // Re-send every Tally booking (EN and MNE forms) to the shared applicant sheet.
-// Safe to re-run: the sheet skips Response IDs it already has.
+// Safe to re-run: the sheet skips Response IDs it already has. Missing bookings get a Status from
+// the places left at the time of the re-send.
 //
 //   TALLY_API_KEY=... SHEET_WEBHOOK_URL=... SHEET_WEBHOOK_TOKEN=... npm run sync-sheet
 import { parseSubmission } from '../lib/server/tally.ts';
-import { appendToSheet } from '../lib/server/sheet.ts';
+import { appendToSheet, tasterGroupOf } from '../lib/server/sheet.ts';
+import { capsWith } from '../lib/places.ts';
 
 const FORMS = ['5X9P2d', 'db0ePA'];
 // The Tally API names questions by their field name; give them labels the parser knows.
@@ -41,7 +43,7 @@ for (const form of FORMS) {
       });
       const s = parseSubmission({ data: { responseId: sub.id, createdAt: sub.submittedAt, fields } });
       if (!s) continue;
-      const out = await appendToSheet(url, token, s);
+      const out = await appendToSheet(url, token, s, capsWith(process.env.CAP_OVERRIDE)[tasterGroupOf(s)] ?? 0);
       console.log(form, sub.id, out.ok ? out.detail : `FAILED ${out.status} ${out.detail}`);
     }
     if (!d.hasMore) break;
