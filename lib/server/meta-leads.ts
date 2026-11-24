@@ -50,9 +50,10 @@ export function mapLead(raw: { id: string; created_time: string; field_data?: Fi
   let last = val(fd, 'last_name');
   const full = val(fd, 'full_name', 'ime_i_prezime', 'name');
   if (!first && full) {
+    // Greeting uses the first word; Facebook names often carry extra words ("Tanja Preočanin Ex Gaco").
     const parts = full.split(/\s+/);
-    first = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0];
-    last = parts.length > 1 ? parts[parts.length - 1] : '';
+    first = parts[0];
+    last = parts.slice(1).join(' ');
   }
   return {
     id: raw.id,
@@ -85,6 +86,19 @@ export async function pageToken(pageId: string, token: string, version: string):
 }
 
 export async function tasterForms(pageId: string, token: string, version: string, env: Record<string, string | undefined>): Promise<FbForm[]> {
+  // Known form ids: read just those (no need to list every form on the Page).
+  const ids = (env.FB_FORM_IDS || '').split(',').map((x) => x.trim()).filter(Boolean);
+  if (ids.length) {
+    const out: FbForm[] = [];
+    for (const id of ids) {
+      try {
+        out.push(await graph<FbForm>(`${id}?fields=id,name,locale,status`, token, version));
+      } catch {
+        out.push({ id, name: id }); // name unknown (permissions): still read its leads
+      }
+    }
+    return out;
+  }
   const j = await graph<{ data: FbForm[] }>(`${pageId}/leadgen_forms?fields=id,name,locale,status&limit=200`, token, version);
   return (j.data || []).filter((f) => isTasterForm(f, env.FB_FORM_IDS, env.FB_FORM_MATCH || undefined));
 }
@@ -101,4 +115,22 @@ export async function leadsSince(form: FbForm, sinceMs: number, token: string, v
     path = after ? `${form.id}/leads?fields=id,created_time,field_data&limit=100&filtering=${filtering}&after=${after}` : null;
   }
   return out;
+}
+
+// Meta's lead CSV export (Ads Manager / Leads Center): tab-separated, ids as "l:<id>", phones as "p:<phone>".
+export function parseLeadsCsv(text: string, langOverride?: string): FbLead[] {
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+  const delim = lines[0].includes('\t') ? '\t' : ',';
+  const cells = (l: string) => l.split(delim).map((c) => c.trim().replace(/^"(.*)"$/, '$1'));
+  const head = cells(lines[0]);
+  const col = (row: string[], name: string) => row[head.indexOf(name)] || '';
+  return lines.slice(1).map((l) => {
+    const row = cells(l);
+    const form: FbForm = { id: col(row, 'form_id').replace(/^f:/, ''), name: col(row, 'form_name') };
+    const fields = ['full_name', 'first_name', 'last_name', 'email', 'phone_number']
+      .map((n) => ({ name: n, values: [col(row, n).replace(/^p:/, '')] }))
+      .filter((f) => f.values[0]);
+    return mapLead({ id: col(row, 'id').replace(/^l:/, ''), created_time: col(row, 'created_time'), field_data: fields }, form, formLang(form, langOverride));
+  });
 }

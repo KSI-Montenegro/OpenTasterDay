@@ -3,7 +3,8 @@
 //   FB_LEAD_ID, FB_FOLLOWUP_START (ISO time), FB_STEP, FB_SMS_STEP, FB_PHONE, FB_BOOKED, LEAD_SOURCE.
 import { e164 } from './brevo.ts';
 import { linkCode, nextAction, smsText, type FollowupState, type Lang } from './followup.ts';
-import { sendSms } from './sms.ts';
+import { sendText } from './messaging.ts';
+import { spamReason } from './spam.ts';
 import type { FbLead } from './meta-leads.ts';
 
 const API = 'https://api.brevo.com/v3';
@@ -40,7 +41,8 @@ export function stateOf(c: BrevoContact, env: Env): FollowupState {
     smsStep: Number(c.attributes.FB_SMS_STEP || 0),
     booked: isBooked(c, env),
     hasEmail: !!c.email && !c.email.endsWith('@mailin-sms.com'),
-    hasPhone: !!e164(str(c.attributes.FB_PHONE))
+    // Texts (WhatsApp/SMS) only once a channel is funded: SMS_ENABLED=1.
+    hasPhone: env.SMS_ENABLED === '1' && !!e164(str(c.attributes.FB_PHONE))
   };
 }
 
@@ -81,7 +83,8 @@ export async function processContact(env: Env, c: BrevoContact, now: number): Pr
     update.FB_STEP = a.step; // SMS-only lead
   }
   if (a.sms !== undefined) {
-    const r = await sendSms(e164(str(c.attributes.FB_PHONE)), smsText(lang, a.sms, shortLink(env, 'sms', a.sms, lang)), env);
+    const link = shortLink(env, 'sms', a.sms, lang);
+    const r = await sendText(e164(str(c.attributes.FB_PHONE)), { key: `${a.sms}${lang}`, lang, link, smsText: smsText(lang, a.sms, link) }, env);
     out.sms = r.ok ? `${a.sms} via ${r.provider}` : `failed ${r.provider} ${r.status} ${r.detail || ''}`;
     if (r.ok) update.FB_SMS_STEP = a.sms;
     else if (a.email === undefined) delete update.FB_STEP; // SMS-only step not delivered: retry later
@@ -103,7 +106,8 @@ async function getContact(env: Env, identifier: string, type: 'email_id' | 'cont
 export async function ingestLead(env: Env, lead: FbLead, now: number, start = lead.createdAt): Promise<Record<string, unknown>> {
   const listId = Number(env.BREVO_FB_LIST_ID || 0);
   const phone = e164(lead.phone);
-  if (!lead.email && !phone) return { lead: lead.id, skipped: 'no email or phone' };
+  const spam = spamReason(lead);
+  if (spam) return { lead: lead.id, skipped: `spam: ${spam}` };
   if (!lead.email) return { lead: lead.id, skipped: 'no email (phone-only leads are not stored)' };
   const existing = await getContact(env, lead.email, 'email_id');
   if (existing && str(existing.attributes.FB_LEAD_ID)) return { lead: lead.id, skipped: 'already following up' };

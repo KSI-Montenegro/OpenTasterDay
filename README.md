@@ -70,7 +70,14 @@ closes (Sunday 6 December).
   `INFOBIP_SENDER`). Texts are in `lib/server/followup.ts`.
 - Links: `/r/<code>` (e.g. `/r/s2m` = SMS, step 2, Montenegrin) redirect to the page with
   `utm_source=facebook&utm_medium=lead_form_followup&utm_content=sms2`.
+- Texts: WhatsApp first when `INFOBIP_WHATSAPP_SENDER` and `INFOBIP_WA_TEMPLATES` (approved template names, keys
+  `1en` ... `3mne`, one placeholder: the link) are set, with Infobip's automatic SMS failover; otherwise SMS.
+  No texts at all until `SMS_ENABLED=1` (set it once Infobip or Brevo SMS has credit).
+- Spam (`lib/server/spam.ts`): invalid or disposable email, no real name, test/junk names, links in the name,
+  fake phones. Logged, never messaged.
 - Past leads: `npm run fb-backfill -- --days 30` lists them (dry run); add `--send` to start their follow-up.
+  This needs the Meta token to have `pages_manage_ads`. Without it, import Meta's CSV exports instead:
+  `npm run fb-import -- leads.csv [--send]` (UTF-16 or UTF-8, duplicates across files removed).
 
 ## Develop
 
