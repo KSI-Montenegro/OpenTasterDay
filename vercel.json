@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/fb-leads/poll", "schedule": "*/5 * * * *" },
+    { "path": "/api/fb-leads/remind", "schedule": "7 * * * *" }
+  ]
+}

@@ -5,6 +5,7 @@ import { buildLeadEvent, sendLead } from '@/lib/server/meta';
 import { appendToSheet, tasterGroupOf, type SheetResult } from '@/lib/server/sheet';
 import { decideStatus, templateFor } from '@/lib/server/booking';
 import { capsWith } from '@/lib/places';
+import { markBooked } from '@/lib/server/fb-followup';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,15 @@ export async function POST(req: Request) {
     }
   } else {
     result.contact = 'skipped: BREVO_API_KEY or BREVO_LIST_ID missing';
+  }
+
+  // Stop the Facebook lead form follow-up for this family (matched by phone or email).
+  if (brevoKey && process.env.BREVO_FB_LIST_ID) {
+    try {
+      result.fbFollowupStopped = await markBooked(process.env, s.email, s.phone);
+    } catch (e) {
+      console.error('FB follow-up stop failed', String(e));
+    }
   }
 
   // Meta Conversions API, only with the visitor's ad consent. Waitlist sign-ups are leads too.

@@ -51,6 +51,27 @@ booking from Tally; rows already in the sheet are skipped.
 
 The sheet has medical information: share it with named staff only, not "anyone with the link".
 
+## Facebook lead form follow-up
+
+People who fill in a Taster Morning Facebook lead form (Meta Lead Ads) get up to 3 nudges to finish the booking
+on this page: right away, after 2 days and after 5 days (email always; SMS 09:00 to 20:00 Montenegro time).
+It stops as soon as the family books or joins the waitlist (matched by email or phone), and after registration
+closes (Sunday 6 December).
+
+- `/api/fb-leads/poll` (cron, every 5 minutes): reads new leads from the Page's lead forms whose name matches
+  `FB_FORM_MATCH` (default `taster|probno`) or `FB_FORM_IDS`, adds them to the Brevo list "Taster Morning FB leads"
+  and sends step 1. Form language: "EN"/"English" in the form name means English, otherwise Montenegrin
+  (`FB_FORM_LANG` overrides per form id).
+- `/api/fb-leads/remind` (cron, hourly): steps 2 and 3, and texts held overnight.
+- State lives on the Brevo contact: FB_LEAD_ID, FB_FOLLOWUP_START, FB_STEP, FB_SMS_STEP, FB_PHONE, FB_BOOKED, LEAD_SOURCE.
+- Emails: Brevo templates "Taster FB follow-up 1/2/3 (EN/MNE)", ids in `BREVO_FB_TEMPLATES` (JSON, keys `1en` ... `3mne`),
+  param LINK.
+- SMS: Brevo (`BREVO_SMS_SENDER`, needs SMS credits), falling back to Infobip (`INFOBIP_BASE_URL`, `INFOBIP_API_KEY`,
+  `INFOBIP_SENDER`). Texts are in `lib/server/followup.ts`.
+- Links: `/r/<code>` (e.g. `/r/s2m` = SMS, step 2, Montenegrin) redirect to the page with
+  `utm_source=facebook&utm_medium=lead_form_followup&utm_content=sms2`.
+- Past leads: `npm run fb-backfill -- --days 30` lists them (dry run); add `--send` to start their follow-up.
+
 ## Develop
 
 ```
